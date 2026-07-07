@@ -1,5 +1,5 @@
 // twenty-forty-eight.js — Classic 2048 tile puzzle
-// D-pad to move tiles. A to restart. Start to exit.
+// D-pad to move. A to open menu. Start to exit.
 
 let w = display.width;
 let h = display.height;
@@ -17,6 +17,12 @@ cellSize = math.floor(cellSize / grid);
 if (cellSize < 20) cellSize = 20;
 let gridX = math.floor((w - grid * cellSize) / 2);
 let gridY = statusBar + 18;
+
+let miniCell = 24;
+let miniPad = 2;
+let miniFramePad = 4;
+let miniGridX = 30;
+let miniGridY = 20;
 
 let board = [
     [0, 0, 0, 0],
@@ -39,6 +45,13 @@ let moveDir = 0;
 let fpsTime = util.time();
 let fpsCount = 0;
 let fpsValue = 0;
+
+let currentScreen = 'launch';
+let launchedFromGame = false;
+let savedMessage = false;
+let savedMessageTime = 0;
+let gameSavedMsg = false;
+let gameSavedMsgTime = 0;
 
 if (state.highScore === undefined) {
     state.highScore = 0;
@@ -89,10 +102,9 @@ function trackFPS() {
 
 function drawFPS() {
     if (!DEBUG_FPS) return;
-    display.fill_rect(w - 60, 2, 58, 8, display.color565(250, 248, 239));
     display.set_text_size(0);
     display.set_text_color(display.color565(3, 178, 90));
-    display.set_cursor(w - 58, 2);
+    display.set_cursor(200, statusBar + 4);
     display.print("FPS: ");
     printNum(fpsValue);
 }
@@ -352,6 +364,143 @@ function drawTile(x, y, value) {
     printTileNum(v);
 }
 
+function drawMiniBoard(boardData) {
+    let frameColor = display.color565(187, 173, 160);
+
+    let frameX = miniGridX - miniFramePad;
+    let frameY = miniGridY - miniFramePad;
+    let frameW = 4 * miniCell + 2 * miniFramePad;
+    let frameH = 4 * miniCell + 2 * miniFramePad;
+    display.fill_rect(frameX, frameY, frameW, frameH, frameColor);
+
+    for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+            let x = miniGridX + c * miniCell;
+            let y = miniGridY + r * miniCell;
+            let v = boardData[r][c];
+            let bg = tileColor(v);
+            display.fill_rect(x + miniPad, y + miniPad, miniCell - miniPad * 2, miniCell - miniPad * 2, bg);
+        }
+    }
+}
+
+function drawSavedMessageOverlay() {
+    let msgW = 120;
+    let msgH = 20;
+    let msgX = math.floor((w - msgW) / 2);
+    let msgY = math.floor((h - msgH) / 2);
+    let msgBg = display.color565(119, 110, 101);
+    display.fill_rect(msgX, msgY, msgW, msgH, msgBg);
+    display.set_text_size(1);
+    display.set_text_color(colors.white);
+    display.set_cursor(msgX + 10, msgY + 15);
+    display.print("Game Saved");
+}
+
+function drawLaunchScreen() {
+    let bgColor = display.color565(250, 248, 239);
+    let darkColor = display.color565(119, 110, 101);
+    let accentColor = display.color565(237, 194, 46);
+
+    display.fill_screen(bgColor);
+
+    // display.set_text_size(2);
+    // display.set_text_color(accentColor);
+    // let titleText = "2048";
+    // let titleW = 40;
+    // let titleX = math.floor((w - titleW) / 2);
+    // let titleY = 12;
+    // display.set_cursor(titleX, titleY + statusBar);
+    // display.print(titleText);
+
+    display.set_text_size(1);
+    let lineY = 50;
+    let lineX = 150;
+    display.set_text_color(darkColor);
+    display.set_cursor(lineX, lineY);
+    display.set_text_size(1);
+    display.print("Best");
+    lineY = lineY + 18;
+    display.set_cursor(lineX, lineY);
+    printNum(state.highScore);
+
+    let showScore = false;
+    let showBoard = false;
+    let boardToShow = null;
+    let displayScore = 0;
+
+    if (launchedFromGame) {
+        showScore = true;
+        showBoard = true;
+        boardToShow = board;
+        displayScore = score;
+    } else if (hasSavedGame()) {
+        showScore = true;
+        showBoard = true;
+        displayScore = state.savedScore !== undefined ? state.savedScore : 0;
+        boardToShow = [
+            [state.br0c0 !== undefined ? state.br0c0 : 0, state.br0c1 !== undefined ? state.br0c1 : 0, state.br0c2 !== undefined ? state.br0c2 : 0, state.br0c3 !== undefined ? state.br0c3 : 0],
+            [state.br1c0 !== undefined ? state.br1c0 : 0, state.br1c1 !== undefined ? state.br1c1 : 0, state.br1c2 !== undefined ? state.br1c2 : 0, state.br1c3 !== undefined ? state.br1c3 : 0],
+            [state.br2c0 !== undefined ? state.br2c0 : 0, state.br2c1 !== undefined ? state.br2c1 : 0, state.br2c2 !== undefined ? state.br2c2 : 0, state.br2c3 !== undefined ? state.br2c3 : 0],
+            [state.br3c0 !== undefined ? state.br3c0 : 0, state.br3c1 !== undefined ? state.br3c1 : 0, state.br3c2 !== undefined ? state.br3c2 : 0, state.br3c3 !== undefined ? state.br3c3 : 0]
+        ];
+    }
+
+    if (showScore) {
+        lineY = lineY + 18;
+        display.set_text_color(darkColor);
+        display.set_cursor(lineX, lineY);
+        display.print("Score");
+        lineY = lineY + 18;
+        display.set_cursor(lineX, lineY);
+        printNum(displayScore);
+    }
+
+    if (showBoard) {
+        drawMiniBoard(boardToShow);
+    }
+
+    let btnY = 150;
+    let btnX = math.floor((w - 120) / 2);
+
+    display.set_text_size(1);
+    display.set_text_color(darkColor);
+
+    if (launchedFromGame) {
+        display.set_cursor(btnX, btnY);
+        display.print("A - Continue");
+    } else if (hasSavedGame()) {
+        display.set_cursor(btnX, btnY);
+        display.print("A - Continue");
+    } else {
+        display.set_cursor(btnX, btnY);
+        display.print("A - Start Game");
+    }
+
+    btnY = btnY + 18;
+    display.set_text_color(darkColor);
+    display.set_cursor(btnX, btnY);
+    display.print("C - New Game");
+
+    btnY = btnY + 18;
+
+    
+        display.set_cursor(btnX, btnY);
+        display.print("D - Save Game");
+        btnY = btnY + 18;
+    
+
+    display.set_text_color(darkColor);
+    display.set_cursor(btnX, btnY + 5);
+    display.print("Start - Exit");
+
+    if (savedMessage) {
+        drawSavedMessageOverlay();
+    }
+
+    drawFPS();
+}
+
 function drawHUD() {
     let boardColor = display.color565(250, 248, 239);
     let darkColor = display.color565(119, 110, 101);
@@ -364,27 +513,17 @@ function drawHUD() {
     display.print("Score: ");
     printNum(score);
 
-    display.fill_rect(w - 160, statusBar + 4, 152, 8, boardColor);
-    display.set_cursor(w - 150, statusBar + 4);
-    display.set_text_color(darkColor);
-    display.print("Best: ");
-    printNum(state.highScore);
-
     display.fill_rect(textPad, statusBar + 14, 170, 8, boardColor);
     if (won) {
-        display.set_cursor(textPad, statusBar + 14);
+        display.set_cursor(textPad, h - 10);
         display.set_text_color(display.color565(237, 194, 46));
         display.print("You win! A=continue");
     }
     if (gameOver) {
-        display.set_cursor(textPad, statusBar + 14);
+        display.set_cursor(textPad, h - 10);
         display.set_text_color(colors.red);
         display.print("Game Over! A=new game");
     }
-
-    display.set_cursor(textPad, h - 10);
-    display.set_text_color(darkColor);
-    display.print("Start=exit");
 }
 
 function drawFullBoard() {
@@ -489,7 +628,61 @@ function resetGame() {
     addRandomTile();
 }
 
-resetGame();
+function saveGame() {
+    state.br0c0 = board[0][0]; state.br0c1 = board[0][1]; state.br0c2 = board[0][2]; state.br0c3 = board[0][3];
+    state.br1c0 = board[1][0]; state.br1c1 = board[1][1]; state.br1c2 = board[1][2]; state.br1c3 = board[1][3];
+    state.br2c0 = board[2][0]; state.br2c1 = board[2][1]; state.br2c2 = board[2][2]; state.br2c3 = board[2][3];
+    state.br3c0 = board[3][0]; state.br3c1 = board[3][1]; state.br3c2 = board[3][2]; state.br3c3 = board[3][3];
+    state.savedScore = score;
+    state.hasSavedGame = 1;
+    if (score > state.highScore) {
+        state.highScore = score;
+    }
+    state.save();
+}
+
+function loadBoardFromState() {
+    board[0][0] = state.br0c0 !== undefined ? state.br0c0 : 0;
+    board[0][1] = state.br0c1 !== undefined ? state.br0c1 : 0;
+    board[0][2] = state.br0c2 !== undefined ? state.br0c2 : 0;
+    board[0][3] = state.br0c3 !== undefined ? state.br0c3 : 0;
+    board[1][0] = state.br1c0 !== undefined ? state.br1c0 : 0;
+    board[1][1] = state.br1c1 !== undefined ? state.br1c1 : 0;
+    board[1][2] = state.br1c2 !== undefined ? state.br1c2 : 0;
+    board[1][3] = state.br1c3 !== undefined ? state.br1c3 : 0;
+    board[2][0] = state.br2c0 !== undefined ? state.br2c0 : 0;
+    board[2][1] = state.br2c1 !== undefined ? state.br2c1 : 0;
+    board[2][2] = state.br2c2 !== undefined ? state.br2c2 : 0;
+    board[2][3] = state.br2c3 !== undefined ? state.br2c3 : 0;
+    board[3][0] = state.br3c0 !== undefined ? state.br3c0 : 0;
+    board[3][1] = state.br3c1 !== undefined ? state.br3c1 : 0;
+    board[3][2] = state.br3c2 !== undefined ? state.br3c2 : 0;
+    board[3][3] = state.br3c3 !== undefined ? state.br3c3 : 0;
+}
+
+function loadGame() {
+    loadBoardFromState();
+    score = state.savedScore !== undefined ? state.savedScore : 0;
+    gameOver = false;
+    won = false;
+    mergeCells = [];
+    animating = false;
+    prevBoard = null;
+}
+
+function clearSavedGame() {
+    state.br0c0 = 0; state.br0c1 = 0; state.br0c2 = 0; state.br0c3 = 0;
+    state.br1c0 = 0; state.br1c1 = 0; state.br1c2 = 0; state.br1c3 = 0;
+    state.br2c0 = 0; state.br2c1 = 0; state.br2c2 = 0; state.br2c3 = 0;
+    state.br3c0 = 0; state.br3c1 = 0; state.br3c2 = 0; state.br3c3 = 0;
+    state.savedScore = 0;
+    state.hasSavedGame = 0;
+    state.save();
+}
+
+function hasSavedGame() {
+    return state.hasSavedGame === 1;
+}
 
 let running = true;
 let queuedDir = -1;
@@ -502,72 +695,138 @@ while (running) {
         running = false;
     }
 
-    if (ctrl.a.just_pressed && (gameOver || won)) {
-        resetGame();
-    }
-
-    if (ctrl.left.just_pressed) {
-        queuedDir = 0;
-    }
-    if (ctrl.right.just_pressed) {
-        queuedDir = 1;
-    }
-    if (ctrl.up.just_pressed) {
-        queuedDir = 2;
-    }
-    if (ctrl.down.just_pressed) {
-        queuedDir = 3;
-    }
-
-    if (animating) {
-        drawFullBoard();
-        drawPulseFrame();
-        display.queue_draw();
-
-        if (util.time() - pulseStartTime >= PULSE_DURATION || queuedDir >= 0) {
-            animating = false;
-            mergeCells = [];
-            if (!canMove()) {
-                gameOver = true;
+    if (currentScreen === 'launch') {
+        if (savedMessage) {
+            if (util.time() - savedMessageTime >= 1) {
+                savedMessage = false;
+                currentScreen = 'game';
+                launchedFromGame = false;
             }
         }
-        util.sleep(0.003);
-    } else if (!gameOver) {
-        let moved = false;
-        if (queuedDir >= 0) {
-            if (queuedDir === 0) {
-                moved = moveLeft();
+
+        if (!savedMessage) {
+            if (ctrl.a.just_pressed) {
+                if (launchedFromGame) {
+                    currentScreen = 'game';
+                    launchedFromGame = false;
+                } else if (hasSavedGame()) {
+                    loadGame();
+                    currentScreen = 'game';
+                } else {
+                    resetGame();
+                    currentScreen = 'game';
+                }
             }
-            if (queuedDir === 1) {
-                moved = moveRight();
+
+            if (ctrl.c.just_pressed) {
+                clearSavedGame();
+                resetGame();
+                launchedFromGame = false;
+                currentScreen = 'game';
             }
-            if (queuedDir === 2) {
-                moved = moveUp();
+
+            if (ctrl.d.just_pressed && launchedFromGame) {
+                saveGame();
+                savedMessage = true;
+                savedMessageTime = util.time();
             }
-            if (queuedDir === 3) {
-                moved = moveDown();
-            }
-            queuedDir = -1;
         }
 
-        if (moved) {
-            findMergeCells(prevBoard, moveDir);
-            addRandomTile();
-            if (mergeCells.length > 0) {
-                pulseStartTime = util.time();
-                animating = true;
-            }
-            if (score > state.highScore) {
-                state.highScore = score;
-            }
-        }
-        drawFullBoard();
+        drawLaunchScreen();
         display.queue_draw();
         util.sleep(0.003);
     } else {
-        drawFullBoard();
-        display.queue_draw();
-        util.sleep(0.003);
+        if (gameSavedMsg) {
+            if (util.time() - gameSavedMsgTime >= 1) {
+                gameSavedMsg = false;
+            }
+        }
+
+        if (ctrl.d.just_pressed) {
+            saveGame();
+            gameSavedMsg = true;
+            gameSavedMsgTime = util.time();
+        }
+
+        if (ctrl.a.just_pressed && (gameOver || won)) {
+            resetGame();
+        } else if (ctrl.a.just_pressed) {
+            launchedFromGame = true;
+            currentScreen = 'launch';
+        }
+
+        if (ctrl.left.just_pressed) {
+            queuedDir = 0;
+        }
+        if (ctrl.right.just_pressed) {
+            queuedDir = 1;
+        }
+        if (ctrl.up.just_pressed) {
+            queuedDir = 2;
+        }
+        if (ctrl.down.just_pressed) {
+            queuedDir = 3;
+        }
+
+        if (animating) {
+            drawFullBoard();
+            drawPulseFrame();
+            if (gameSavedMsg) {
+                drawSavedMessageOverlay();
+            }
+            display.queue_draw();
+
+            if (util.time() - pulseStartTime >= PULSE_DURATION || queuedDir >= 0) {
+                animating = false;
+                mergeCells = [];
+                if (!canMove()) {
+                    gameOver = true;
+                }
+            }
+            util.sleep(0.003);
+        } else if (!gameOver) {
+            let moved = false;
+            if (queuedDir >= 0) {
+                if (queuedDir === 0) {
+                    moved = moveLeft();
+                }
+                if (queuedDir === 1) {
+                    moved = moveRight();
+                }
+                if (queuedDir === 2) {
+                    moved = moveUp();
+                }
+                if (queuedDir === 3) {
+                    moved = moveDown();
+                }
+                queuedDir = -1;
+            }
+
+            if (moved) {
+                findMergeCells(prevBoard, moveDir);
+                addRandomTile();
+                if (mergeCells.length > 0) {
+                    pulseStartTime = util.time();
+                    animating = true;
+                }
+                if (score > state.highScore) {
+                    state.highScore = score;
+                }
+            }
+            drawFullBoard();
+            if (gameSavedMsg) {
+                drawSavedMessageOverlay();
+            }
+            display.queue_draw();
+            util.sleep(0.003);
+        } else {
+            drawFullBoard();
+            if (gameSavedMsg) {
+                drawSavedMessageOverlay();
+            }
+            display.queue_draw();
+            util.sleep(0.003);
+        }
     }
 
     trackFPS();
