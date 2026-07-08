@@ -16,7 +16,7 @@ let cellSize = 54;
 // cellSize = math.floor(cellSize / grid);
 // if (cellSize < 20) cellSize = 25;
 let gridX = math.floor((w - grid * cellSize) / 2);
-let gridX = 30;
+//let gridX = 30;
 let gridY = 0;
 
 let miniCell = 24;
@@ -357,10 +357,10 @@ function drawTile(x, y, value) {
         display.set_text_color(colors.white);
     }
     let digits = digitCount(v);
-    let textW = digits * 6;
+    let textW = digits * 10;
     let textH = 8;
     let cx = x + math.floor((cellSize - textW) / 2);
-    let cy = y + math.floor((cellSize - textH) / 2) + 2;
+    let cy = y + math.floor((cellSize - textH) / 2) + 7;
     display.set_cursor(cx, cy);
     printTileNum(v);
 }
@@ -741,8 +741,10 @@ while (running) {
             gameSavedMsgTime = util.time();
         }
 
-        if (ctrl.a.just_pressed && (gameOver || won)) {
+        if (ctrl.a.just_pressed && gameOver) {
             resetGame();
+        } else if (ctrl.a.just_pressed && won) {
+            won = false;
         } else if (ctrl.a.just_pressed) {
             launchedFromGame = true;
             currentScreen = 'launch';
