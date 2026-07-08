@@ -11,12 +11,13 @@ let textPad = 8;
 let pad = 3;
 let availW = w - margin;
 let availH = h - statusBar - 25;
-let cellSize = availW;
-if (availH < availW) cellSize = availH;
-cellSize = math.floor(cellSize / grid);
-if (cellSize < 20) cellSize = 20;
+let cellSize = 54;
+// if (availH < availW) cellSize = availH;
+// cellSize = math.floor(cellSize / grid);
+// if (cellSize < 20) cellSize = 25;
 let gridX = math.floor((w - grid * cellSize) / 2);
-let gridY = statusBar + 18;
+let gridX = 30;
+let gridY = 0;
 
 let miniCell = 24;
 let miniPad = 2;
@@ -35,7 +36,7 @@ let score = 0;
 let gameOver = false;
 let won = false;
 
-let DEBUG_FPS = true;
+let DEBUG_FPS = false;
 let PULSE_DURATION = 0.5;
 let mergeCells = [];
 let pulseStartTime = 0;
@@ -505,15 +506,7 @@ function drawHUD() {
     let boardColor = display.color565(250, 248, 239);
     let darkColor = display.color565(119, 110, 101);
 
-    display.fill_rect(0, 0, w, gridY, boardColor);
-
     display.set_text_size(1);
-    display.set_text_color(darkColor);
-    display.set_cursor(textPad, statusBar + 4);
-    display.print("Score: ");
-    printNum(score);
-
-    display.fill_rect(textPad, statusBar + 14, 170, 8, boardColor);
     if (won) {
         display.set_cursor(textPad, h - 10);
         display.set_text_color(display.color565(237, 194, 46));
