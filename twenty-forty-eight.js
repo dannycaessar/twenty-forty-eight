@@ -37,7 +37,7 @@ let gameOver = false;
 let won = false;
 
 let DEBUG_FPS = false;
-let PULSE_DURATION = 0.5;
+let PULSE_DURATION = 0.3;
 let mergeCells = [];
 let pulseStartTime = 0;
 let animating = false;
@@ -323,10 +323,13 @@ function findMergeCells(oldBoard, dir) {
 
 function drawPulseTile(x, y, value, scale) {
     let v = math.floor(value);
-    let size = math.floor((cellSize - pad * 2) * scale);
-    let offset = math.floor((cellSize - pad * 2 - size) / 2);
+    let baseSize = cellSize - pad * 2;
+    let centerX = x + pad + math.floor(baseSize / 2);
+    let centerY = y + pad + math.floor(baseSize / 2);
+    let drawSize = math.floor(baseSize * scale);
+    let halfSize = math.floor(drawSize / 2);
     let bg = tileColor(v);
-    display.fill_rect(x + pad + offset, y + pad + offset, size, size, bg);
+    display.fill_rect(centerX - halfSize, centerY - halfSize, drawSize, drawSize, bg);
 
     display.set_text_size(1);
     if (v <= 4) {
@@ -335,12 +338,10 @@ function drawPulseTile(x, y, value, scale) {
         display.set_text_color(colors.white);
     }
     let digits = digitCount(v);
-    let textW = digits * 6;
+    let textW = digits * 10;
     let textH = 8;
-    let tileCenterX = x + pad + offset + math.floor(size / 2);
-    let tileCenterY = y + pad + offset + math.floor(size / 2);
-    let cx = tileCenterX - math.floor(textW / 2);
-    let cy = tileCenterY - math.floor(textH / 2) + 2;
+    let cx = x + math.floor((cellSize - textW) / 2);
+    let cy = y + math.floor((cellSize - textH) / 2) + 7;
     display.set_cursor(cx, cy);
     printTileNum(v);
 }
@@ -750,20 +751,10 @@ while (running) {
             currentScreen = 'launch';
         }
 
-        if (ctrl.left.just_pressed) {
-            queuedDir = 0;
-        }
-        if (ctrl.right.just_pressed) {
-            queuedDir = 1;
-        }
-        if (ctrl.up.just_pressed) {
-            queuedDir = 2;
-        }
-        if (ctrl.down.just_pressed) {
-            queuedDir = 3;
-        }
-
         if (animating) {
+            if (pulseStartTime === 0) {
+                pulseStartTime = util.time();
+            }
             drawFullBoard();
             drawPulseFrame();
             if (gameSavedMsg) {
@@ -771,15 +762,29 @@ while (running) {
             }
             display.queue_draw();
 
-            if (util.time() - pulseStartTime >= PULSE_DURATION || queuedDir >= 0) {
+            if (util.time() - pulseStartTime >= PULSE_DURATION) {
                 animating = false;
                 mergeCells = [];
+                pulseStartTime = 0;
                 if (!canMove()) {
                     gameOver = true;
                 }
             }
             util.sleep(0.003);
         } else if (!gameOver) {
+            if (ctrl.left.just_pressed) {
+                queuedDir = 0;
+            }
+            if (ctrl.right.just_pressed) {
+                queuedDir = 1;
+            }
+            if (ctrl.up.just_pressed) {
+                queuedDir = 2;
+            }
+            if (ctrl.down.just_pressed) {
+                queuedDir = 3;
+            }
+
             let moved = false;
             if (queuedDir >= 0) {
                 if (queuedDir === 0) {
@@ -801,7 +806,7 @@ while (running) {
                 findMergeCells(prevBoard, moveDir);
                 addRandomTile();
                 if (mergeCells.length > 0) {
-                    pulseStartTime = util.time();
+                    pulseStartTime = 0;
                     animating = true;
                 }
                 if (score > state.highScore) {
