@@ -543,14 +543,7 @@ function drawPulseFrame() {
     let t = elapsed / PULSE_DURATION;
     if (t > 1) t = 1;
 
-    let scale;
-    if (t < 0.25) {
-        let p = t / 0.25;
-        scale = 1 + 0.12 * (1 - (1 - p) * (1 - p));
-    } else {
-        let p = (t - 0.25) / 0.75;
-        scale = 1 + 0.12 * (1 - p) * (1 - p);
-    }
+    let scale = 1 + 0.12 * (1 - t) * (1 - t);
 
     for (let i = 0; i < mergeCells.length; i++) {
         let cell = mergeCells[i];
@@ -727,8 +720,9 @@ while (running) {
         }
 
         drawLaunchScreen();
-        display.queue_draw();
-        util.sleep(0.003);
+            display.queue_draw();
+            drawFullBoard();
+            util.sleep(0.003);
     } else {
         if (gameSavedMsg) {
             if (util.time() - gameSavedMsgTime >= 1) {
@@ -753,6 +747,7 @@ while (running) {
 
         if (animating) {
             if (pulseStartTime === 0) {
+                drawFullBoard();
                 pulseStartTime = util.time();
             }
             drawFullBoard();
