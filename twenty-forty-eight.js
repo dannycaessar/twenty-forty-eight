@@ -1,22 +1,11 @@
-// twenty-forty-eight.js — Classic 2048 tile puzzle
-// D-pad to move. A to open menu. Start to exit.
-
 let w = display.width;
 let h = display.height;
 
 let grid = 4;
-let statusBar = 16;
-let margin = 10;
 let textPad = 8;
 let pad = 3;
-let availW = w - margin;
-let availH = h - statusBar - 25;
 let cellSize = 54;
-// if (availH < availW) cellSize = availH;
-// cellSize = math.floor(cellSize / grid);
-// if (cellSize < 20) cellSize = 25;
 let gridX = math.floor((w - grid * cellSize) / 2);
-//let gridX = 30;
 let gridY = 0;
 
 let miniCell = 24;
@@ -62,6 +51,24 @@ let tileVals = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048];
 let tileStrs = ["2", "4", "8", "16", "32", "64", "128", "256", "512", "1024", "2048"];
 
 let dStr = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+let BOARD_COLOR = display.color565(250, 248, 239);
+let EMPTY_COLOR = display.color565(205, 193, 180);
+let T_C = {
+    "0": EMPTY_COLOR,
+    "2": display.color565(238, 228, 218),
+    "4": display.color565(237, 224, 200),
+    "8": display.color565(242, 177, 121),
+    "16": display.color565(245, 149, 99),
+    "32": display.color565(246, 124, 95),
+    "64": display.color565(246, 94, 59),
+    "128": display.color565(237, 207, 114),
+    "256": display.color565(237, 204, 97),
+    "512": display.color565(237, 200, 80),
+    "1024": display.color565(237, 197, 63),
+    "2048": display.color565(237, 194, 46),
+};
+let T_C_DEFAULT = display.color565(60, 58, 50);
 
 function printNum(n) {
     let v = math.floor(n);
@@ -115,22 +122,6 @@ function digitCount(n) {
     if (n < 100) return 2;
     if (n < 1000) return 3;
     return 4;
-}
-
-function tileColor(value) {
-    if (value === 0) return display.color565(205, 193, 180);
-    if (value === 2) return display.color565(238, 228, 218);
-    if (value === 4) return display.color565(237, 224, 200);
-    if (value === 8) return display.color565(242, 177, 121);
-    if (value === 16) return display.color565(245, 149, 99);
-    if (value === 32) return display.color565(246, 124, 95);
-    if (value === 64) return display.color565(246, 94, 59);
-    if (value === 128) return display.color565(237, 207, 114);
-    if (value === 256) return display.color565(237, 204, 97);
-    if (value === 512) return display.color565(237, 200, 80);
-    if (value === 1024) return display.color565(237, 197, 63);
-    if (value === 2048) return display.color565(237, 194, 46);
-    return display.color565(60, 58, 50);
 }
 
 function cellX(c) {
@@ -328,42 +319,34 @@ function drawPulseTile(x, y, value, scale) {
     let centerY = y + pad + math.floor(baseSize / 2);
     let drawSize = math.floor(baseSize * scale);
     let halfSize = math.floor(drawSize / 2);
-    let bg = tileColor(v);
+    let bg = T_C[v] || T_C_DEFAULT;
     display.fill_rect(centerX - halfSize, centerY - halfSize, drawSize, drawSize, bg);
 
+    drawTileText(x, y, v);
+}
+
+function drawTileText(x, y, value) {
     display.set_text_size(1);
-    if (v <= 4) {
+    if (value <= 4) {
         display.set_text_color(display.color565(119, 110, 101));
     } else {
         display.set_text_color(colors.white);
     }
-    let digits = digitCount(v);
+    let digits = digitCount(value);
     let textW = digits * 10;
     let textH = 8;
     let cx = x + math.floor((cellSize - textW) / 2);
     let cy = y + math.floor((cellSize - textH) / 2) + 7;
     display.set_cursor(cx, cy);
-    printTileNum(v);
+    printTileNum(value);
 }
 
 function drawTile(x, y, value) {
     let v = math.floor(value);
-    let bg = tileColor(v);
+    let bg = T_C[v] || T_C_DEFAULT;
     display.fill_rect(x + pad, y + pad, cellSize - pad * 2, cellSize - pad * 2, bg);
 
-    display.set_text_size(1);
-    if (v <= 4) {
-        display.set_text_color(display.color565(119, 110, 101));
-    } else {
-        display.set_text_color(colors.white);
-    }
-    let digits = digitCount(v);
-    let textW = digits * 10;
-    let textH = 8;
-    let cx = x + math.floor((cellSize - textW) / 2);
-    let cy = y + math.floor((cellSize - textH) / 2) + 7;
-    display.set_cursor(cx, cy);
-    printTileNum(v);
+    drawTileText(x, y, v);
 }
 
 function drawMiniBoard(boardData) {
@@ -380,7 +363,7 @@ function drawMiniBoard(boardData) {
             let x = miniGridX + c * miniCell;
             let y = miniGridY + r * miniCell;
             let v = boardData[r][c];
-            let bg = tileColor(v);
+            let bg = T_C[v] || T_C_DEFAULT;
             display.fill_rect(x + miniPad, y + miniPad, miniCell - miniPad * 2, miniCell - miniPad * 2, bg);
         }
     }
@@ -400,20 +383,10 @@ function drawSavedMessageOverlay() {
 }
 
 function drawLaunchScreen() {
-    let bgColor = display.color565(250, 248, 239);
     let darkColor = display.color565(119, 110, 101);
     let accentColor = display.color565(237, 194, 46);
 
-    display.fill_screen(bgColor);
-
-    // display.set_text_size(2);
-    // display.set_text_color(accentColor);
-    // let titleText = "2048";
-    // let titleW = 40;
-    // let titleX = math.floor((w - titleW) / 2);
-    // let titleY = 12;
-    // display.set_cursor(titleX, titleY + statusBar);
-    // display.print(titleText);
+    display.fill_screen(BOARD_COLOR);
 
     display.set_text_size(1);
     let lineY = 50;
@@ -504,9 +477,6 @@ function drawLaunchScreen() {
 }
 
 function drawHUD() {
-    let boardColor = display.color565(250, 248, 239);
-    let darkColor = display.color565(119, 110, 101);
-
     display.set_text_size(1);
     if (won) {
         display.set_cursor(textPad, h - 10);
@@ -521,7 +491,7 @@ function drawHUD() {
 }
 
 function drawFullBoard() {
-    display.fill_screen(display.color565(250, 248, 239));
+    display.fill_screen(BOARD_COLOR);
 
     for (let r = 0; r < grid; r++) {
         for (let c = 0; c < grid; c++) {
@@ -529,7 +499,7 @@ function drawFullBoard() {
             if (value !== 0) {
                 drawTile(cellX(c), cellY(r), value);
             } else {
-                display.fill_rect(cellX(c) + pad, cellY(r) + pad, cellSize - pad * 2, cellSize - pad * 2, display.color565(205, 193, 180));
+                display.fill_rect(cellX(c) + pad, cellY(r) + pad, cellSize - pad * 2, cellSize - pad * 2, EMPTY_COLOR);
             }
         }
     }
@@ -720,9 +690,8 @@ while (running) {
         }
 
         drawLaunchScreen();
-            display.queue_draw();
-            drawFullBoard();
-            util.sleep(0.003);
+        display.queue_draw();
+        util.sleep(0.003);
     } else {
         if (gameSavedMsg) {
             if (util.time() - gameSavedMsgTime >= 1) {
@@ -747,7 +716,6 @@ while (running) {
 
         if (animating) {
             if (pulseStartTime === 0) {
-                drawFullBoard();
                 pulseStartTime = util.time();
             }
             drawFullBoard();
