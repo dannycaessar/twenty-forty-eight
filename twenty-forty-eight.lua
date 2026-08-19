@@ -61,7 +61,7 @@ local function cellX(c)
 end
 
 local function cellY(r)
-    return gridY + (r - 1) * CELL_SIZE
+    return gridY + (r - 1) * CELL_SIZE + 1
 end
 
 local function digitCount(n)
