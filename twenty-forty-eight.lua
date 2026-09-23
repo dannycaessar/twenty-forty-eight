@@ -590,6 +590,7 @@ local function clearSavedGame()
 end
 
 function lilka.init()
+    if state == nil then state = {} end
     w = display.width
     h = display.height
     gridX = math.floor((w - GRID * CELL_SIZE) / 2)
